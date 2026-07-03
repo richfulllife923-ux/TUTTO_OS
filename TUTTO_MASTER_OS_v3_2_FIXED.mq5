@@ -1,13 +1,4 @@
-//+------------------------------------------------------------------+
-//| TUTTO_MASTER_OS_v3_2_FIXED.mq5  (UI layer refactor -> v3.3)      |
-//|                                                                   |
-//| LOGIC UNCHANGED: GetPhase(), SweepUp(), SweepDown(), the ENTRY    |
-//| RULES block, and all buffer/arrow output are byte-identical to    |
-//| v3.2. Only the info display changed: the multi-line Comment()     |
-//| block (which duplicated text already shown elsewhere on the       |
-//| chart) is replaced by a call into the shared corner panel.        |
-//+------------------------------------------------------------------+
-#property indicator_chart_window
+﻿#property indicator_chart_window
 #property indicator_buffers 4
 #property indicator_plots   4
 
@@ -33,11 +24,6 @@
 #property indicator_type4   DRAW_ARROW
 #property indicator_color4  clrRed
 
-#include <TUTTO/TUTTO_UI_ObjectManager.mqh>
-#include <TUTTO/TUTTO_UI_Panel.mqh>
-#include <TUTTO/TUTTO_UI_Style.mqh>
-// Requires TUTTO_UI_VERSION: TUTTO UI LAYER v1.3 (dot-first STATE, Renderer+ObjectManager gatekeeper) (must match every file in Include/TUTTO/)
-
 //--- buffers
 double ma200[];
 double ema50[];
@@ -49,10 +35,8 @@ int h_ma200;
 int h_ema50;
 int h_atr;
 
-CTuttoObjectManager g_mgr;
-
 //+------------------------------------------------------------------+
-//| PHASE ENUM  (unchanged)                                          |
+//| PHASE ENUM                                                       |
 //+------------------------------------------------------------------+
 enum TUTTO_PHASE
 {
@@ -84,13 +68,11 @@ int OnInit()
    if(h_ma200 == INVALID_HANDLE || h_ema50 == INVALID_HANDLE || h_atr == INVALID_HANDLE)
       return INIT_FAILED;
 
-   g_mgr.Init("MASTEROS");
-
    return INIT_SUCCEEDED;
 }
 
 //+------------------------------------------------------------------+
-//| PHASE DETECTION (SAFE MT5)  (unchanged)                          |
+//| PHASE DETECTION (SAFE MT5)                                       |
 //+------------------------------------------------------------------+
 TUTTO_PHASE GetPhase(const double &high[], const double &low[])
 {
@@ -114,7 +96,7 @@ TUTTO_PHASE GetPhase(const double &high[], const double &low[])
 }
 
 //+------------------------------------------------------------------+
-//| SWEEP LOGIC  (unchanged)                                         |
+//| SWEEP LOGIC                                                      |
 //+------------------------------------------------------------------+
 bool SweepUp(const double &high[], const double &close[])
 {
@@ -124,32 +106,6 @@ bool SweepUp(const double &high[], const double &close[])
 bool SweepDown(const double &low[], const double &close[])
 {
    return (low[1] < low[2] && close[1] > low[2]);
-}
-
-//+------------------------------------------------------------------+
-//| UI: map phase -> label/color for the shared panel only.           |
-//| This is presentation-only; it does not feed back into any signal. |
-//+------------------------------------------------------------------+
-string PhaseLabel(TUTTO_PHASE phase)
-{
-   switch(phase)
-   {
-      case PHASE_EXPANSION:     return "EXP";
-      case PHASE_COMPRESSION:   return "COMP";
-      case PHASE_AUTHENTICATION:return "AUTH";
-      default:                  return "OTH";
-   }
-}
-
-color PhaseColor(TUTTO_PHASE phase)
-{
-   switch(phase)
-   {
-      case PHASE_EXPANSION:      return TUTTO_ClrBullish;
-      case PHASE_COMPRESSION:    return TUTTO_ClrWarning;
-      case PHASE_AUTHENTICATION: return TUTTO_ClrNeutral;
-      default:                   return TUTTO_ClrCalm;
-   }
 }
 
 //+------------------------------------------------------------------+
@@ -215,9 +171,22 @@ int OnCalculate(
    if(sellSignal)
       sell[i] = high[i] + (Point()*10);
 
-   //--- STATE-tier indicator: dot + single short code (buy/sell state
-   //--- is already visible via the arrow buffers, no need to repeat it)
-   TuttoState_Show(g_mgr, PhaseColor(phase), PhaseLabel(phase));
+   //--- info panel
+   string phase_str;
+
+   switch(phase)
+   {
+      case PHASE_EXPANSION: phase_str="EXPANSION"; break;
+      case PHASE_COMPRESSION: phase_str="COMPRESSION"; break;
+      case PHASE_AUTHENTICATION: phase_str="AUTH"; break;
+      default: phase_str="OTHER";
+   }
+
+   Comment(
+      "TUTTO MASTER OS v3.3 CLEAN\n",
+      "PHASE: ", phase_str, "\n",
+      "BUY: ", buySignal, " SELL: ", sellSignal
+   );
 
    return rates_total;
 }
@@ -225,5 +194,5 @@ int OnCalculate(
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
-   g_mgr.DeleteAll();
+   Comment("");
 }
